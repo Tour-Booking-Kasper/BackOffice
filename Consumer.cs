@@ -75,7 +75,7 @@ public class Consumer
             }
 
             //Hvis beskeden er valid, skriver vi den til konsollen.
-            Console.WriteLine($" [x] Received: {message}");
+            Console.WriteLine($" [x] Received valid booking / cancellation: {message}");
         };
 
         channel.BasicConsume(queue: this.QueueName, autoAck: true, consumer: consumer);
