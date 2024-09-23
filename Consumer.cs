@@ -65,7 +65,6 @@ public class Consumer
                     return;
                 }
 
-
                 //Hvis beskeden er valid, skriver vi den til konsollen.
                 Console.WriteLine($" [x] Back-Office Received: {message}");
             };

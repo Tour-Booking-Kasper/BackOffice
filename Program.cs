@@ -8,9 +8,9 @@ class Program
             hostName: "localhost",
             exchangeName: "tourExchange",
             queueName: "backOfficeQueue",
-            routingKey: "tour.*"
+            routingKey: "tour.*",
             deadLetterExchange: "deadLetterExchange",
-            deadLetterQueue: "deadLetterQueue"
+            deadLetterQueue: "deadLetterQueue",
         );
         consumer.Consume();
     }

@@ -1,5 +1,6 @@
 using System;
 
+//En Message klasse, som har samme struktur, som objektet fra frontend
 public class Message {
     public bool IsBooking { get; set; }
     public bool IsCancellation { get; set; }
