@@ -25,58 +25,65 @@ public class Consumer
         DeadLetterQueue = deadLetterQueue;
     }
 
-
     //Consume metode til at modtage beskeder fra RabbitMQ, samt at validere beskederne
     //Her ved jeg godt, at det kunne splittes op yderligere, beklager jeg ikke helt følger SRP her Morten :(
-    public void Consume()
+   public void Consume()
+   {
+    var factory = new ConnectionFactory() { HostName = this.HostName };
+    using (var connection = factory.CreateConnection())
+    using (var channel = connection.CreateModel())
     {
-        var factory = new ConnectionFactory() { HostName = this.HostName };
-        using (var connection = factory.CreateConnection())
-        using (var channel = connection.CreateModel())
+        //Opretter dead letter exchange
+        channel.ExchangeDeclare(exchange: DeadLetterExchange, type: "direct");
+
+        //Opretter dead letter queue
+        channel.QueueDeclare(queue: DeadLetterQueue, durable: false, exclusive: false, autoDelete: false, arguments: null);
+
+        //Binder dead letter queue sammen med dead letter exchange
+        channel.QueueBind(queue: DeadLetterQueue, exchange: DeadLetterExchange, routingKey: "");
+
+        //Opretter 'main' exchange og queue, og angiver dead letter exchange og queue som argumenter main queue
+        channel.ExchangeDeclare(exchange: this.ExchangeName, type: "topic");
+        channel.QueueDeclare(queue: this.QueueName, durable: false, exclusive: false, autoDelete: false, arguments: new Dictionary<string, object>
         {
-            // Opretter en dead letter exchange og queue.
-            channel.ExchangeDeclare(exchange: DeadLetterExchange, type: "direct");
-            channel.QueueDeclare(queue: DeadLetterQueue, durable: false, exclusive: false, autoDelete: false, arguments: null);
+            { "x-dead-letter-exchange", DeadLetterExchange }
+        });
 
-            channel.ExchangeDeclare(exchange: this.ExchangeName, type: "topic");
-            channel.QueueDeclare(queue: this.QueueName, durable: false, exclusive: false, autoDelete: false, arguments: new System.Collections.Generic.Dictionary<string, object>
+        //Binder main queue og main exchange
+        channel.QueueBind(queue: this.QueueName, exchange: this.ExchangeName, routingKey: this.RoutingKey);
+
+        Console.WriteLine(" [*] Waiting for all tour messages...");
+
+        //Opretter en consumer, som lytter efter beskeder på main queue, i dette tilfælde, backOfficeQueue
+        var consumer = new EventingBasicConsumer(channel);
+        consumer.Received += (model, ea) =>
+        {
+            var body = ea.Body.ToArray();
+            var message = Encoding.UTF8.GetString(body);
+            var messageObject = JsonConvert.DeserializeObject<Message>(message);
+
+            //Kalder isMessageInvalid metoden, som returnerer et MessageValidation objekt
+            var validation = IsMessageInvalid(messageObject);
+
+            //Hvis den ikke er valid, skriver vi det til konsollen, og sender beskeden til dead letter exchange.
+            if (!validation.Valid)
             {
-                { "x-dead-letter-exchange", DeadLetterExchange }
-            });
-            channel.QueueBind(queue: this.QueueName, exchange: this.ExchangeName, routingKey: this.RoutingKey);
+                var invalidMessage = Encoding.UTF8.GetBytes(message);
+                channel.BasicPublish(exchange: DeadLetterExchange, routingKey: "", body: invalidMessage);
+                Console.WriteLine($" [!] Invalid message: {message} sent to dead letter queue.");
+                return;
+            }
 
-            Console.WriteLine(" [*] Waiting for all tour messages for Back Office...");
-            
-            //Opretter en consumer, som lytter efter beskeder på den angivne kø, i dette tilfælde, backOfficeQueue
-            var consumer = new EventingBasicConsumer(channel);
-            consumer.Received += (model, ea) =>
-            {
-                var body = ea.Body.ToArray();
-                var message = Encoding.UTF8.GetString(body);
-                var messageObject = JsonConvert.DeserializeObject<Message>(message);
+            //Hvis beskeden er valid, skriver vi den til konsollen.
+            Console.WriteLine($" [x] Received: {message}");
+        };
 
-                // Opretter et validation objekt, som angiver om message er valid eller ej.
-                var validation = IsMessageInvalid(messageObject);
-                
-                //Hvis den ikke er valid, skriver vi det til konsollen, og sender beskeden til dead letter queue.
-                if (!validation.Valid)
-                {
-                    Console.WriteLine(" [!] Invalid message received. Sending to dead letter queue");
-                    var invalidMessage = Encoding.UTF8.GetBytes(message);
-                    channel.BasicPublish(exchange: DeadLetterExchange, routingKey: "", body: invalidMessage);
-                    return;
-                }
+        channel.BasicConsume(queue: this.QueueName, autoAck: true, consumer: consumer);
 
-                //Hvis beskeden er valid, skriver vi den til konsollen.
-                Console.WriteLine($" [x] Back-Office Received: {message}");
-            };
-
-            channel.BasicConsume(queue: this.QueueName, autoAck: true, consumer: consumer);
-
-            Console.WriteLine(" Press [enter] to exit.");
-            Console.ReadLine();
-        }
+        Console.WriteLine(" Press [enter] to exit.");
+        Console.ReadLine();
     }
+}
 
 
     //Metode, som returnerer et MessageValidation objekt, som indeholder en bool og en string
