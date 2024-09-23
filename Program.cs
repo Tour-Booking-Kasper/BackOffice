@@ -10,7 +10,7 @@ class Program
             queueName: "backOfficeQueue",
             routingKey: "tour.*",
             deadLetterExchange: "deadLetterExchange",
-            deadLetterQueue: "deadLetterQueue",
+            deadLetterQueue: "deadLetterQueue"
         );
         consumer.Consume();
     }
