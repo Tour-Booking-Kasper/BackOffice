@@ -15,12 +15,14 @@ public class Consumer
     public string DeadLetterQueue { get; set; }
 
     // Constructor til at initialisere properties   
-    public Consumer(string hostName, string exchangeName, string queueName, string routingKey)
+    public Consumer(string hostName, string exchangeName, string queueName, string routingKey, string deadLetterExchange, string deadLetterQueue)
     {
         HostName = hostName;
         ExchangeName = exchangeName;
         QueueName = queueName;
         RoutingKey = routingKey;
+        deadLetterExchange
+        DeadLetterQueue
     }
 
 
