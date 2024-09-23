@@ -21,8 +21,8 @@ public class Consumer
         ExchangeName = exchangeName;
         QueueName = queueName;
         RoutingKey = routingKey;
-        deadLetterExchange
-        DeadLetterQueue
+        DeadLetterExchange = deadLetterExchange;
+        DeadLetterQueue = deadLetterQueue;
     }
 
 
